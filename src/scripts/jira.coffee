@@ -5,7 +5,8 @@
 #   None
 #
 # Configuration:
-#   HUBOT_JIRA_URL
+#   HUBOT_JIRA_INTERNAL_URL
+#   HUBOT_JIRA_EXTERNAL_URL
 #   HUBOT_JIRA_USER
 #   HUBOT_JIRA_PASSWORD
 #   Optional environment variables:
@@ -87,6 +88,9 @@ class RecentIssues
 module.exports = (robot) ->
   filters = new IssueFilters robot
 
+  internalurl = process.env.HUBOT_JIRA_INTERNAL_URL || process.env.HUBOT_JIRA_EXTERNAL_URL || process.env.HUBOT_JIRA_URL
+  externalurl = process.env.HUBOT_JIRA_EXTERNAL_URL || process.env.HUBOT_JIRA_INTERNAL_URL || process.env.HUBOT_JIRA_URL
+
   useV2 = process.env.HUBOT_JIRA_USE_V2 || false
   # max number of issues to list during a search
   maxlist = process.env.HUBOT_JIRA_MAXLIST || 10
@@ -98,10 +102,10 @@ module.exports = (robot) ->
   recentissues = new RecentIssues issuedelay
 
   get = (msg, where, cb) ->
-    console.log(process.env.HUBOT_JIRA_URL + "/rest/api/latest/" + where)
+    console.log(internalurl + "/rest/api/latest/" + where)
     authdata = new Buffer(process.env.HUBOT_JIRA_USER+':'+process.env.HUBOT_JIRA_PASSWORD).toString('base64')
 
-    msg.http(process.env.HUBOT_JIRA_URL + "/rest/api/latest/" + where).
+    msg.http(internalurl + "/rest/api/latest/" + where).
       header('Authorization', 'Basic ' + authdata).
       get() (err, res, body) ->
         cb JSON.parse(body)
@@ -133,7 +137,7 @@ module.exports = (robot) ->
               issues.fields.fixVersions.map((fixVersion) -> return fixVersion.name).join(", ")
             else
               "no fix version"
-          url: process.env.HUBOT_JIRA_URL + '/browse/' + issues.key
+          url: externalurl + '/browse/' + issues.key
       else
         issue =
           key: issues.key
@@ -149,7 +153,7 @@ module.exports = (robot) ->
               issues.fields.fixVersions.value.map((fixVersion) -> return fixVersion.name).join(", ")
             else
               "no fix version"
-          url: process.env.HUBOT_JIRA_URL + '/browse/' + issues.key
+          url: externalurl + '/browse/' + issues.key
 
       cb "[#{issue.key}] #{issue.summary}. #{issue.assignee()} / #{issue.status}, #{issue.fixVersion()} #{issue.url}"
       
@@ -158,7 +162,7 @@ module.exports = (robot) ->
       if result.errors?
         return
       
-      resultText = "I found #{result.total} issues for your search. #{process.env.HUBOT_JIRA_URL}/secure/IssueNavigator.jspa?reset=true&jqlQuery=#{escape(jql)}"
+      resultText = "I found #{result.total} issues for your search. #{externalurl}/secure/IssueNavigator.jspa?reset=true&jqlQuery=#{escape(jql)}"
       if result.issues.length <= maxlist
         cb resultText
         result.issues.forEach (issue) ->
